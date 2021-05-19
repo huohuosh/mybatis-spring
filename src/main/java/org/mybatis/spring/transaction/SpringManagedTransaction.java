@@ -48,9 +48,13 @@ public class SpringManagedTransaction implements Transaction {
   private final DataSource dataSource;
 
   private Connection connection;
-
+  /**
+   * 当前连接是否处于事务中
+   */
   private boolean isConnectionTransactional;
-
+  /**
+   * 是否自动提交
+   */
   private boolean autoCommit;
 
   public SpringManagedTransaction(DataSource dataSource) {
@@ -77,6 +81,7 @@ public class SpringManagedTransaction implements Transaction {
    * false and will always call commit/rollback so we need to no-op that calls.
    */
   private void openConnection() throws SQLException {
+    // 获取连接，如果当前线程有绑定连接且在事务中，使用该连接
     this.connection = DataSourceUtils.getConnection(this.dataSource);
     this.autoCommit = this.connection.getAutoCommit();
     this.isConnectionTransactional = DataSourceUtils.isConnectionTransactional(this.connection, this.dataSource);
@@ -112,6 +117,7 @@ public class SpringManagedTransaction implements Transaction {
    */
   @Override
   public void close() throws SQLException {
+    // 释放连接，根据传入连接是否等于当前线程绑定连接判断是否要关闭
     DataSourceUtils.releaseConnection(this.connection, this.dataSource);
   }
 

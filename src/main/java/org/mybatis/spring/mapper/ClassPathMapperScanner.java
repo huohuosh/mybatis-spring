@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.SqlSessionFactory;
 import org.mybatis.logging.Logger;
 import org.mybatis.logging.LoggerFactory;
@@ -60,6 +61,9 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
   // Copy of FactoryBean#OBJECT_TYPE_ATTRIBUTE which was added in Spring 5.2
   static final String FACTORY_BEAN_OBJECT_TYPE = "factoryBeanObjectType";
 
+  /**
+   * 是否添加到 {@link Configuration} 中
+   */
   private boolean addToConfig = true;
 
   private boolean lazyInitialization;
@@ -67,9 +71,13 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
   private SqlSessionFactory sqlSessionFactory;
 
   private SqlSessionTemplate sqlSessionTemplate;
-
+  /**
+   * {@link #sqlSessionTemplate} 的 bean 名字
+   */
   private String sqlSessionTemplateBeanName;
-
+  /**
+   * {@link #sqlSessionFactory} 的 bean 名字
+   */
   private String sqlSessionFactoryBeanName;
 
   private Class<? extends Annotation> annotationClass;
@@ -167,12 +175,14 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
     boolean acceptAllInterfaces = true;
 
     // if specified, use the given annotation and / or marker interface
+    //  如果指定了注解，则添加 INCLUDE 过滤器 AnnotationTypeFilter 对象
     if (this.annotationClass != null) {
       addIncludeFilter(new AnnotationTypeFilter(this.annotationClass));
       acceptAllInterfaces = false;
     }
 
     // override AssignableTypeFilter to ignore matches on the actual marker interface
+    // 如果指定了接口，则添加 INCLUDE 过滤器 AssignableTypeFilter 对象
     if (this.markerInterface != null) {
       addIncludeFilter(new AssignableTypeFilter(this.markerInterface) {
         @Override
@@ -183,12 +193,14 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
       acceptAllInterfaces = false;
     }
 
+    // 接受所有接口
     if (acceptAllInterfaces) {
       // default include filter that accepts all classes
       addIncludeFilter((metadataReader, metadataReaderFactory) -> true);
     }
 
     // exclude package-info.java
+    // 排除 package-info
     addExcludeFilter((metadataReader, metadataReaderFactory) -> {
       String className = metadataReader.getClassMetadata().getClassName();
       return className.endsWith("package-info");
@@ -201,12 +213,14 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
    */
   @Override
   public Set<BeanDefinitionHolder> doScan(String... basePackages) {
+    // 执行扫描，获得包下符合的类们，并分装成 BeanDefinitionHolder 对象的集合
     Set<BeanDefinitionHolder> beanDefinitions = super.doScan(basePackages);
 
     if (beanDefinitions.isEmpty()) {
       LOGGER.warn(() -> "No MyBatis mapper was found in '" + Arrays.toString(basePackages)
           + "' package. Please check your configuration.");
     } else {
+      // 处理 BeanDefinitionHolder 对象的集合
       processBeanDefinitions(beanDefinitions);
     }
 
@@ -216,6 +230,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
   private void processBeanDefinitions(Set<BeanDefinitionHolder> beanDefinitions) {
     AbstractBeanDefinition definition;
     BeanDefinitionRegistry registry = getRegistry();
+    // 遍历 BeanDefinitionHolder 数组，逐一设置属性
     for (BeanDefinitionHolder holder : beanDefinitions) {
       definition = (AbstractBeanDefinition) holder.getBeanDefinition();
       boolean scopedProxy = false;
@@ -232,7 +247,9 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
 
       // the mapper interface is the original class of the bean
       // but, the actual class of the bean is MapperFactoryBean
+      // 设置构造器参数，beanClass 会修改成 mapperFactoryBeanClass
       definition.getConstructorArgumentValues().addGenericArgumentValue(beanClassName); // issue #59
+      // 设置 beanClass，默认 MapperFactoryBean.class
       definition.setBeanClass(this.mapperFactoryBeanClass);
 
       definition.getPropertyValues().add("addToConfig", this.addToConfig);
@@ -242,6 +259,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
       definition.setAttribute(FACTORY_BEAN_OBJECT_TYPE, beanClassName);
 
       boolean explicitFactoryUsed = false;
+      // 设置 sqlSessionFactory
       if (StringUtils.hasText(this.sqlSessionFactoryBeanName)) {
         definition.getPropertyValues().add("sqlSessionFactory",
             new RuntimeBeanReference(this.sqlSessionFactoryBeanName));
@@ -251,6 +269,7 @@ public class ClassPathMapperScanner extends ClassPathBeanDefinitionScanner {
         explicitFactoryUsed = true;
       }
 
+      // 设置 sqlSessionTemplate
       if (StringUtils.hasText(this.sqlSessionTemplateBeanName)) {
         if (explicitFactoryUsed) {
           LOGGER.warn(

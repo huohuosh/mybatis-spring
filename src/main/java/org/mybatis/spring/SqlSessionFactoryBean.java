@@ -94,10 +94,15 @@ public class SqlSessionFactoryBean
   private static final ResourcePatternResolver RESOURCE_PATTERN_RESOLVER = new PathMatchingResourcePatternResolver();
   private static final MetadataReaderFactory METADATA_READER_FACTORY = new CachingMetadataReaderFactory();
 
+  /**
+   * 指定 mybatis-config.xml 路径的 Resource 对象
+   */
   private Resource configLocation;
 
   private Configuration configuration;
-
+  /**
+   * 指定 Mapper 路径的 Resource 数组
+   */
   private Resource[] mapperLocations;
 
   private DataSource dataSource;
@@ -116,18 +121,30 @@ public class SqlSessionFactoryBean
   private boolean failFast;
 
   private Interceptor[] plugins;
-
+  /**
+   * TypeHandler 类
+   */
   private TypeHandler<?>[] typeHandlers;
-
+  /**
+   * TypeHandler 所在的包
+   */
   private String typeHandlersPackage;
-
+  /**
+   * 默认枚举处理类,如果配置了该属性,枚举将统一使用指定处理器进行处理
+   */
   @SuppressWarnings("rawtypes")
   private Class<? extends TypeHandler> defaultEnumTypeHandler;
-
+  /**
+   * 要设置别名的类
+   */
   private Class<?>[] typeAliases;
-
+  /**
+   * 要设置别名的包
+   */
   private String typeAliasesPackage;
-
+  /**
+   * 别名的父类，如果设置该属性， {@link #typeAliasesPackage} 包下只有继承该父类的才会注册别名
+   */
   private Class<?> typeAliasesSuperType;
 
   private LanguageDriver[] scriptingLanguageDrivers;
@@ -483,11 +500,13 @@ public class SqlSessionFactoryBean
    */
   @Override
   public void afterPropertiesSet() throws Exception {
+    // dataSource、sqlSessionFactoryBuilder 不能为 null
     notNull(dataSource, "Property 'dataSource' is required");
     notNull(sqlSessionFactoryBuilder, "Property 'sqlSessionFactoryBuilder' is required");
+    // configuration 和 configLocation 必须也只能其中一个有值
     state((configuration == null && configLocation == null) || !(configuration != null && configLocation != null),
         "Property 'configuration' and 'configLocation' can not specified with together");
-
+    // 创建 SqlSessionFactory 对象
     this.sqlSessionFactory = buildSqlSessionFactory();
   }
 
@@ -505,7 +524,7 @@ public class SqlSessionFactoryBean
   protected SqlSessionFactory buildSqlSessionFactory() throws Exception {
 
     final Configuration targetConfiguration;
-
+    // 初始化 configuration 对象，和设置其 `configuration.variables` 属性
     XMLConfigBuilder xmlConfigBuilder = null;
     if (this.configuration != null) {
       targetConfiguration = this.configuration;
@@ -523,37 +542,38 @@ public class SqlSessionFactoryBean
       targetConfiguration = new Configuration();
       Optional.ofNullable(this.configurationProperties).ifPresent(targetConfiguration::setVariables);
     }
-
+    // 设置 objectFactory、objectWrapperFactory、vfs
     Optional.ofNullable(this.objectFactory).ifPresent(targetConfiguration::setObjectFactory);
     Optional.ofNullable(this.objectWrapperFactory).ifPresent(targetConfiguration::setObjectWrapperFactory);
     Optional.ofNullable(this.vfs).ifPresent(targetConfiguration::setVfsImpl);
 
+    // 根据包名称注册别名
     if (hasLength(this.typeAliasesPackage)) {
       scanClasses(this.typeAliasesPackage, this.typeAliasesSuperType).stream()
           .filter(clazz -> !clazz.isAnonymousClass()).filter(clazz -> !clazz.isInterface())
           .filter(clazz -> !clazz.isMemberClass()).forEach(targetConfiguration.getTypeAliasRegistry()::registerAlias);
     }
-
+    // 根据类名注册别名
     if (!isEmpty(this.typeAliases)) {
       Stream.of(this.typeAliases).forEach(typeAlias -> {
         targetConfiguration.getTypeAliasRegistry().registerAlias(typeAlias);
         LOGGER.debug(() -> "Registered type alias: '" + typeAlias + "'");
       });
     }
-
+    // 注册插件
     if (!isEmpty(this.plugins)) {
       Stream.of(this.plugins).forEach(plugin -> {
         targetConfiguration.addInterceptor(plugin);
         LOGGER.debug(() -> "Registered plugin: '" + plugin + "'");
       });
     }
-
+    // 根据包名称注册 TypeHandler
     if (hasLength(this.typeHandlersPackage)) {
       scanClasses(this.typeHandlersPackage, TypeHandler.class).stream().filter(clazz -> !clazz.isAnonymousClass())
           .filter(clazz -> !clazz.isInterface()).filter(clazz -> !Modifier.isAbstract(clazz.getModifiers()))
           .forEach(targetConfiguration.getTypeHandlerRegistry()::register);
     }
-
+    // 根据类名称注册 TypeHandler
     if (!isEmpty(this.typeHandlers)) {
       Stream.of(this.typeHandlers).forEach(typeHandler -> {
         targetConfiguration.getTypeHandlerRegistry().register(typeHandler);
@@ -561,14 +581,17 @@ public class SqlSessionFactoryBean
       });
     }
 
+    // 设置默认枚举处理类
     targetConfiguration.setDefaultEnumTypeHandler(defaultEnumTypeHandler);
 
+    // 注册 LanguageDriver
     if (!isEmpty(this.scriptingLanguageDrivers)) {
       Stream.of(this.scriptingLanguageDrivers).forEach(languageDriver -> {
         targetConfiguration.getLanguageRegistry().register(languageDriver);
         LOGGER.debug(() -> "Registered scripting language driver: '" + languageDriver + "'");
       });
     }
+    // 设置默认 defaultScriptingLanguageDriver
     Optional.ofNullable(this.defaultScriptingLanguageDriver)
         .ifPresent(targetConfiguration::setDefaultScriptingLanguage);
 
@@ -580,8 +603,10 @@ public class SqlSessionFactoryBean
       }
     }
 
+    // 增加缓存
     Optional.ofNullable(this.cache).ifPresent(targetConfiguration::addCache);
 
+    // 解析 mybatis-config.xml
     if (xmlConfigBuilder != null) {
       try {
         xmlConfigBuilder.parse();
@@ -593,10 +618,12 @@ public class SqlSessionFactoryBean
       }
     }
 
+    // 设置 environment, 其中 TransactionFactory 默认 SpringManagedTransactionFactory
     targetConfiguration.setEnvironment(new Environment(this.environment,
         this.transactionFactory == null ? new SpringManagedTransactionFactory() : this.transactionFactory,
         this.dataSource));
 
+    // 解析 Mapper XML 文件
     if (this.mapperLocations != null) {
       if (this.mapperLocations.length == 0) {
         LOGGER.warn(() -> "Property 'mapperLocations' was specified but matching resources are not found.");
@@ -620,7 +647,7 @@ public class SqlSessionFactoryBean
     } else {
       LOGGER.debug(() -> "Property 'mapperLocations' was not specified.");
     }
-
+    // 创建 SqlSessionFactory 对象
     return this.sqlSessionFactoryBuilder.build(targetConfiguration);
   }
 

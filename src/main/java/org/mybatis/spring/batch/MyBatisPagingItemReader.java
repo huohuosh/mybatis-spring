@@ -39,12 +39,17 @@ import org.springframework.batch.item.database.AbstractPagingItemReader;
  */
 public class MyBatisPagingItemReader<T> extends AbstractPagingItemReader<T> {
 
+  /**
+   * 查询编号
+   */
   private String queryId;
 
   private SqlSessionFactory sqlSessionFactory;
 
   private SqlSessionTemplate sqlSessionTemplate;
-
+  /**
+   * 参数值的映射
+   */
   private Map<String, Object> parameterValues;
 
   public MyBatisPagingItemReader() {
@@ -95,21 +100,26 @@ public class MyBatisPagingItemReader<T> extends AbstractPagingItemReader<T> {
 
   @Override
   protected void doReadPage() {
+    // 创建 sqlSessionTemplate
     if (sqlSessionTemplate == null) {
       sqlSessionTemplate = new SqlSessionTemplate(sqlSessionFactory, ExecutorType.BATCH);
     }
+    // 创建 parameters 参数
     Map<String, Object> parameters = new HashMap<>();
     if (parameterValues != null) {
       parameters.putAll(parameterValues);
     }
+    // 设置分页参数
     parameters.put("_page", getPage());
     parameters.put("_pagesize", getPageSize());
     parameters.put("_skiprows", getPage() * getPageSize());
+    // 清空目前的 results 结果
     if (results == null) {
       results = new CopyOnWriteArrayList<>();
     } else {
       results.clear();
     }
+    // 查询结果
     results.addAll(sqlSessionTemplate.selectList(queryId, parameters));
   }
 

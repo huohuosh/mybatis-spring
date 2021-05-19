@@ -350,10 +350,12 @@ public class MapperScannerConfigurer
    */
   @Override
   public void postProcessBeanDefinitionRegistry(BeanDefinitionRegistry registry) {
+    // 如果有属性占位符，则进行获得，例如 ${basePackage} 等等
     if (this.processPropertyPlaceHolders) {
       processPropertyPlaceHolders();
     }
 
+    // 创建 ClassPathMapperScanner 对象，并设置其相关属性
     ClassPathMapperScanner scanner = new ClassPathMapperScanner(registry);
     scanner.setAddToConfig(this.addToConfig);
     scanner.setAnnotationClass(this.annotationClass);
@@ -371,6 +373,7 @@ public class MapperScannerConfigurer
     if (StringUtils.hasText(defaultScope)) {
       scanner.setDefaultScope(defaultScope);
     }
+    // 注册 scanner 过滤器
     scanner.registerFilters();
     scanner.scan(
         StringUtils.tokenizeToStringArray(this.basePackage, ConfigurableApplicationContext.CONFIG_LOCATION_DELIMITERS));

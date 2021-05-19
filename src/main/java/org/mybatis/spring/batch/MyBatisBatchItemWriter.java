@@ -56,9 +56,13 @@ public class MyBatisBatchItemWriter<T> implements ItemWriter<T>, InitializingBea
   private static final Logger LOGGER = LoggerFactory.getLogger(MyBatisBatchItemWriter.class);
 
   private SqlSessionTemplate sqlSessionTemplate;
-
+  /**
+   * 语句编号
+   */
   private String statementId;
-
+  /**
+   * 是否校验
+   */
   private boolean assertUpdates = true;
 
   private Converter<T, ?> itemToParameterConverter = new PassThroughConverter<>();

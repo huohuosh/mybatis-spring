@@ -39,9 +39,13 @@ public class MyBatisCursorItemReader<T> extends AbstractItemCountingItemStreamIt
 
   private SqlSessionFactory sqlSessionFactory;
   private SqlSession sqlSession;
-
+  /**
+   * 参数值的映射
+   */
   private Map<String, Object> parameterValues;
-
+  /**
+   * Cursor 对象
+   */
   private Cursor<T> cursor;
   private Iterator<T> cursorIterator;
 
