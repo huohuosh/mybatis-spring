@@ -14,7 +14,7 @@
 # limitations under the License.
 #
 
-name: Java CI
+name: Spring/Spring Batch Support
 
 on: [push, pull_request]
 
@@ -23,8 +23,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macOS-latest, windows-latest]
-        java: [8, 11, 16, 17-ea]
+        os: [ubuntu-latest, macOS-latest]
+        java: [8]
         distribution: ['adopt']
       fail-fast: false
       max-parallel: 4
@@ -37,5 +37,7 @@ jobs:
         with:
           java-version: ${{ matrix.java }}
           distribution: ${{ matrix.distribution }}
-      - name: Test with Maven
-        run: ./mvnw test -B -D"license.skip=true"
+      - name: Test with Spring 5.2 / Spring Batch 4.2 support
+        run: ./mvnw test -Dspring.version=$(./scripts/get_latest_version.sh spring-core 5.2) -Dspring-batch.version=$(./scripts/get_latest_version.sh batch/spring-batch-core 4.2)
+      - name: Test with Spring 5.1 / Spring Batch 4.1 support
+        run: ./mvnw test -Dspring.version=$(./scripts/get_latest_version.sh spring-core 5.1) -Dspring-batch.version=$(./scripts/get_latest_version.sh batch/spring-batch-core 4.1)
